@@ -14,7 +14,7 @@ export default {
             },
             {
                 test: /\.node$/,
-                use: 'node-loader',
+                loader: path.resolve(__dirname, '../src/js/node_loader.js'),
             },
             {
                 test: /\.css$/,

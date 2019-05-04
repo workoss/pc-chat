@@ -7,4 +7,5 @@
 #fi
 
 # This will build, package and upload the app to GitHub.
-npm run build && node_modules/.bin/build --projectDir ./dist --win --mac --linux -p always
+#npm run build && node_modules/.bin/build --projectDir ./dist --mac -p always
+npm run build && node_modules/.bin/build --projectDir ./dist --mac 

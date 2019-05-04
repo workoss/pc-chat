@@ -47,12 +47,22 @@
 更多截图，请查看[wewechat readme](./README_wewechat.MD)
 
 
+## node替换淘宝镜像
+
+>> 参考[npm的镜像替换成淘宝](https://www.cnblogs.com/zycbloger/p/6210049.html)
 
 ## 开发
 
 ```
+$ npm install -g node-gyp
 $ npm install
 $ npm run dev
+
+
+# for windows
+# 安卓visual studio 2017
+$ npm install --arch=ia32 --platform=win32
+$ npm run dev --arch=ia32
 ```
 
 更多信息，请查看[wewechat readme](./README_wewechat.MD)
