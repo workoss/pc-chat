@@ -14,7 +14,7 @@ export default {
             },
             {
                 test: /\.node$/,
-                loader: path.resolve(__dirname, '../src/js/node_loader.js'),
+                loader: path.resolve(__dirname, '../src/js/node_loader.js')
             },
             {
                 test: /\.css$/,
@@ -99,7 +99,10 @@ export default {
                 test: /\.js$/,
                 //loader: 'babel',
                 loader: ['babel-loader'],
-                exclude: /node_modules\/(?!tributejs)/
+                exclude: /node_modules\/(?!tributejs)/,
+                include: [
+                    path.join(__dirname, "node_modules/benz-amr-recorder")
+                ],
             },
         ]
     },
