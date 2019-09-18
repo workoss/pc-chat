@@ -3,7 +3,7 @@ import Message from '../wfc/messages/message';
 import Conversation from '../wfc/model/conversation';
 import ConversationInfo from '../wfc/model/conversationInfo';
 import { EventEmitter } from 'events';
-import EventType from './wfcEvent'
+import EventType from './wfcEvent';
 import UserInfo from '../wfc/model/userInfo';
 import NullUserInfo from '../wfc/model/nullUserInfo';
 import NullGroupInfo from './model/nullGroupInfo';
@@ -262,27 +262,29 @@ class WfcManager {
     /**
      * @param {string} userId 
      * @param {bool} fresh 
+     * @param {string} groupId
      */
-    getUserInfo(userId, fresh = false) {
+    getUserInfo(userId, fresh = false, groupId = null) {
         if (!userId || userId === '') {
             return new NullUserInfo('');
         }
+        let userKey = userId + ((groupId == null) ? "" : "@" + groupId);
         let userInfo;
         if (!fresh) {
-            userInfo = self.users.get(userId);
+            userInfo = self.users.get(userKey);
             if (userInfo) {
                 return userInfo;
             }
         }
 
         console.log('getuserInfo', userId);
-        let userInfoStr = proto.getUserInfo(userId, fresh);
+        let userInfoStr = proto.getUserInfo(userId, fresh, groupId);
         if (userInfoStr === '') {
             userInfo = new NullUserInfo(userId);
         } else {
             userInfo = Object.assign(new UserInfo(), JSON.parse(userInfoStr));
         }
-        self.users.set(userInfo.uid, userInfo);
+        self.users.set(userKey, userInfo);
         return userInfo;
     }
 
@@ -569,12 +571,15 @@ class WfcManager {
     }
 
     async modifyGroupAlias(groupId, alias, lines, notifyMessageContent, successCB, failCB) {
+
         let payload = '';
         if (notifyMessageContent) {
             payload = JSON.stringify(notifyMessageContent.encode());
         }
         proto.modifyGroupAlias(groupId, alias, lines, payload, () => {
-            successCB();
+            if (successCB) {
+                successCB();
+            }
         }, (errorCode) => {
             failCB(errorCode);
         });

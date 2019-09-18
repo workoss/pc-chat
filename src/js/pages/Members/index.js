@@ -7,6 +7,10 @@ import helper from 'utils/helper';
 import GroupInfo from '../../wfc/model/groupInfo';
 import wfc from '../../wfc/wfc';
 import Switch from 'components/Switch';
+import GroupType from '../../wfc/model/groupType';
+import MessageContentMediaType from '../../wfc/messages/messageContentMediaType';
+import UserSettingScope from '../../wfc/userSettingScope';
+import PropTypes from 'prop-types';
 
 @inject(stores => ({
     show: stores.members.show,
@@ -16,7 +20,8 @@ import Switch from 'components/Switch';
     search: stores.members.search,
     searching: stores.members.query,
     filtered: stores.members.filtered,
-    showUserinfo: async (user) => {
+    conversation: stores.chat.conversation,
+    showUserinfo: async(user) => {
         var caniremove = false;
         if (stores.chat.target instanceof GroupInfo) {
             let groupInfo = stores.chat.target;
@@ -33,25 +38,110 @@ import Switch from 'components/Switch';
     },
     showGroupMenus: (target) => {
         if (target instanceof GroupInfo) {
-          stores.groupMenus.toggle(true, target);
+            stores.groupMenus.toggle(true, target);
         }
-      },
+    },
 }))
 @observer
 export default class Members extends Component {
+    groupName = '';
+    nickName = '';
+    Portrait = '';
+    timer;
+    setGroupName(text) {
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => {
+            this.groupName = text;
+        }, 300);
+    }
+
+    setNickName(text) {
+        clearTimeout(this.timer);
+        this.timer = setTimeout(() => {
+            this.nickName = text;
+        }, 300);
+    }
+
+    async saveGroupName(groupId) {
+        this.modifyGroup(groupId, GroupType.modifyGroupName, this.groupName);
+    }
+
+    async saveNickName(groupId) {
+        wfc.modifyGroupAlias(groupId, this.nickName, [0], null, null, (errorCode) => {
+            console.log('modify group my nickName fail', errorCode);
+        });
+    }
+
+    uploadPortrait(data) {
+        let reader = new window.FileReader();
+        let self = this;
+        reader.readAsDataURL(data);
+        reader.onload = function(e) {
+            let imgSrc = reader.result.split(',')[1];
+            wfc.uploadMedia(imgSrc, MessageContentMediaType.Portrait,
+                (remoteUrl) => {
+                    console.log(remoteUrl);
+                    self.Portrait = remoteUrl;
+                },
+                (errorCode) => {
+                    console.log('-------------upload error', errorCode);
+                },
+                (current, total) => {
+
+                });
+        };
+    }
+
+    async savePortrait(groupId) {
+        console.log(this.Portrait);
+        this.modifyGroup(groupId, GroupType.modifyGroupPortrait, this.Portrait);
+    }
+
+    async modifyGroup(groupId, type, newValue) {
+        wfc.modifyGroupInfo(groupId, type, newValue, [0], null, null,
+            (errorCode) => {
+                console.log('modify group info fail', errorCode);
+            }
+        );
+    }
+
+    async setTop() {
+        let covnersationInfo = wfc.getConversationInfo(this.props.conversation);
+        wfc.setConversationTop(covnersationInfo.conversation, !covnersationInfo.isTop,
+            () => {},
+            (errorCode) => {
+                console.log('set conversion on top fail');
+            });
+    }
+
+    async setGroupHiddenNickName(target, newValue) {
+        console.log(222);
+        console.log(newValue);
+        console.log(wfc.getUserSetting(5, target));
+        wfc.setUserSetting(5, target, newValue, null, (errorCode) => {
+            console.log('modify show groupMembers nickName fail', errorCode);
+        });
+    }
+
+    async batchProcess(file) {
+        this.props.process(file);
+    }
+
     render() {
-        var { target, searching, list, filtered } = this.props;
-
-
+        var {target, searching, list, filtered, conversation, UserSettingScope} = this.props;
         if (!this.props.show) {
             return false;
         }
-
         let targetName = '';
         if (target instanceof GroupInfo) {
             targetName = target.name;
         }
-
+        let covnersationInfo = wfc.getConversationInfo(conversation);
+        let groupHideNickname = wfc.getUserSetting(5, target.target);
+        console.log(groupHideNickname);
+        console.log(1111);
+        let uid = wfc.getUserId();
+        let userInfo = wfc.getUserInfo(uid, true, target.target);
         return (
             <div className={classes.container}>
                 <header>
@@ -116,20 +206,35 @@ export default class Members extends Component {
                 <div className={classes.column}>
                     <ul >
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label htmlFor="groupName">
                                 <span>群聊名称
-                                    <input type="text" className={classes.groupName} placeholder="群名称"/>
+                                    <input type="text"
+                                        className={classes.groupName}
+                                        ref="input"
+                                        defaultValue={target.name}
+                                        onInput={e => this.setGroupName(e.target.value)}
+                                        placeholder="群名称" />
                                 </span>
-                                <button className="Switch">保存</button>
+                                <button onClick={e => this.saveGroupName(target.target)} className="Switch">保存</button>
                             </label>
                         </li>
 
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label htmlFor="portrait">
                                 <span>更改头像</span>
-                                <input type="file" />
-                                <button className="Switch">上传</button>
-                                <button className="Switch">保存</button>
+                                <input type="file"
+                                    ref="uploader"
+                                    style={{
+                                        display: 'none',
+                                    }}
+                                    onChange={e => {
+                                        this.uploadPortrait(e.target.files[0]);
+                                        e.target.value = null;
+                                    }}
+                                />
+                                <img src={target.portrait} alt="" width="100px" height="100px" />
+                                <button className="Switch" onClick={e => this.refs.uploader.click()}>上传</button>
+                                <button className="Switch" onClick={e => this.savePortrait(target.target)}>保存</button>
                             </label>
                         </li>
 
@@ -143,43 +248,55 @@ export default class Members extends Component {
                         </li>
                         <hr />
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label>
                                 <span>查找聊天内容</span>
                                 <button className="Switch">搜索</button>
                             </label>
                         </li>
                         <hr />
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label htmlFor="ignoreMsg">
                                 <span>消息免打扰</span>
-                                <Switch id="alwaysOnTop" />
+                                <Switch id="ignoreMsg" />
                             </label>
                         </li>
                         <li>
                             <label htmlFor="alwaysOnTop">
                                 <span>置顶聊天</span>
-                                <Switch id="alwaysOnTop" />
+                                <Switch id="alwaysOnTop"
+                                    defaultChecked={covnersationInfo.isTop}
+                                    onChange={e => this.setTop()}
+                                />
                             </label>
                         </li>
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label htmlFor="saveToAddressBook">
                                 <span>保存到通讯录</span>
-                                <Switch id="alwaysOnTop" />
+                                <Switch id="saveToAddressBook" />
                             </label>
                         </li>
                         <hr />
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label>
                                 <span>我的本群昵称
-                                    <input type="text" placeholder="未设置" className={classes.groupName} />
+                                    <input type="text"
+                                        placeholder="未设置"
+                                        ref="input"
+                                        defaultValue={userInfo.groupAlias}
+                                        onInput={e => this.setNickName(e.target.value)}
+                                        className={classes.groupName}
+                                    />
                                 </span>
-                                <button className="Switch">保存</button>
+                                <button onClick={e => this.saveNickName(target.target)} className="Switch">保存</button>
                             </label>
                         </li>
                         <li>
-                            <label htmlFor="alwaysOnTop">
+                            <label htmlFor="showMemberName">
                                 <span>显示群成员昵称</span>
-                                <Switch id="alwaysOnTop" />
+                                <Switch id="showMemberName"
+                                    defaultChecked={!groupHideNickname}
+                                    onChange={e => this.setGroupHiddenNickName(target.target, groupHideNickname ? '0' : '1')}
+                                />
                             </label>
                         </li>
                     </ul>
