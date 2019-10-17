@@ -91,7 +91,7 @@ export default class NewChat extends Component {
             }
             let dataUri = await this.props.mergeImages(portraits);
 
-            wfc.uploadMedia(dataUri.split(',')[1], MessageContentMediaType.Portrait,
+            wfc.uploadMedia('', dataUri.split(',')[1], MessageContentMediaType.Portrait,
                 (remoteUrl) => {
                     wfc.createGroup(null, type, groupName, remoteUrl, selected, [0], null,
                         (groupId) => {
